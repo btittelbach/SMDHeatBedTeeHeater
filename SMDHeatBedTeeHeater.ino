@@ -6,7 +6,10 @@
 
 // TEMP_HIST_SIZE == display.width()
 #define TEMP_HIST_SIZE 128
-#define GRAPH_HEIGHT 104
+//GRAPH_HEIGHT: pixelheight were GRAPH_UPPER_TEMP should be
+#define GRAPH_HEIGHT 50
+#define GRAPH_UPPER_TEMP 120.0
+#define GRAPH_TEMP_ZERO_OFFSET -15.0
 #define TEMP_OVERSAMPLING 4
 #define PIN_SSR 3
 uint16_t temp_samples_[TEMP_OVERSAMPLING];
@@ -36,8 +39,8 @@ Adafruit_SSD1306 display(OLED_DC, OLED_RESET, OLED_CS);
 const int analogInPin1 = A1;  // Analog input pin that the potentiometer is attached to
 const int analogInPin2 = A2;  // Analog input pin that the potentiometer is attached to
 
-int16_t potiRawValue = 0;        // value read from the pot
-int16_t tempRawValue = 0;        // value read from the pot
+uint16_t potiRawValue = 0;        // value read from the pot
+uint16_t tempRawValue = 0;        // value read from the pot
 float aRef=3.3;
 
 void setup() {
@@ -45,9 +48,9 @@ void setup() {
   Serial.begin(9600);
 
   //PID
-  pid_setP(4096);
-  pid_setI(717);
-  pid_setD(12288);
+  pid_setP(8192);
+  pid_setI(512);
+  pid_setD(24576);
   pid_setLimits(0,255);
 
   //DISPLAY
@@ -62,16 +65,16 @@ void setup() {
 
 }
 
-void displayTemp(float target, float current) {
+void displayTemp(float temp_target, float temp_current) {
   display.clearDisplay();   // clears the screen and buffer
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0,0);
-  display.print(F("Set: ")); display.print(target); display.println(F("degC"));
-  display.print(F("Temp: ")); display.print(current); display.println(F("degC"));
+  display.print(F("Set: ")); display.print(temp_target); display.println(F("degC"));
+  display.print(F("Temp: ")); display.print(temp_current); display.println(F("degC"));
 
-  uint8_t y = display.height() - 1 - (current * GRAPH_HEIGHT / 200);
-  uint8_t setline = display.height()-1-(target * GRAPH_HEIGHT / 200);
+  uint8_t y = display.height() - 1 - (uint8_t)((temp_current + GRAPH_TEMP_ZERO_OFFSET) * GRAPH_HEIGHT / GRAPH_UPPER_TEMP);
+  uint8_t setline = display.height() - 1 - (uint8_t)((temp_target + GRAPH_TEMP_ZERO_OFFSET) * GRAPH_HEIGHT / GRAPH_UPPER_TEMP);
 
   temp_history_[temp_history_idx_] = y;
   temp_history_idx_++;
@@ -94,11 +97,20 @@ void loop() {
   // print the results to the serial monitor:
   Serial.print(F("potiRawValue = "));
   Serial.println(potiRawValue);
+
+  //map to range 156 (aka 0°C)  ... 716 (aka 180°C)
+  potiRawValue = potiRawValue * 64 / 117 + 156  //make sure calculation does not exceed 16bit (1024*64 == 2^16)
+
+  Serial.print(F("potiRawValue in temp range = "));
+  Serial.println(potiRawValue);
   Serial.print(F("tempRawValue = "));
   Serial.println(tempRawValue);
 
+
+
  // now print out the temperature
   float target_temperatureC = ((float(potiRawValue)*aRef / 1024.0) - 0.5) * 100 ;  //converting from 10 mv per degree wit 500 mV offset
+  // float target_temperatureC = ((float(potiRawValue)*aRef / 1024.0)) * 54.6 ;  //range 0 to 180°C
   // now print out the temperature
   float temperatureC = ((float(tempRawValue)*aRef / 1024.0) - 0.5) * 100 ;  //converting from 10 mv per degree wit 500 mV offset
                                                //to degrees ((volatge - 500mV) times 100)
