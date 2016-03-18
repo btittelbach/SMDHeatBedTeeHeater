@@ -4,6 +4,7 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_SSD1306.h"
 #include "pid_control.h"
+#include "flames128.h"
 
 
 // TEMP_HIST_SIZE == display.width()
@@ -49,7 +50,6 @@ Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 #define OLED_RESET  9
 Adafruit_SSD1306 display(OLED_DC, OLED_RESET, OLED_CS);
 
-
 // These constants won't change.  They're used to give names
 // to the pins used:
 const int analogInPin1 = A1;  // Analog input pin that the potentiometer is attached to
@@ -78,7 +78,8 @@ void setup() {
   FastLED.setBrightness( BRIGHTNESS );
 
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
-  display.begin(SSD1306_SWITCHCAPVCC);  
+  display.begin(SSD1306_SWITCHCAPVCC);
+  display.drawBitmap(0, 64-FLAMES128_GLCD_HEIGHT, flames128_glcd_bmp, FLAMES128_GLCD_WIDTH,FLAMES128_GLCD_HEIGHT, 1);  
   display.display(); // show splashscreen
   delay(2000);
   display.clearDisplay();   // clears the screen and buffer
